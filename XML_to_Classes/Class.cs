@@ -27,6 +27,8 @@ namespace XML_to_Classes
         public string XmlName { get; set; }
         public string Namespace { get; set; }
 
+        public bool isRoot {  get; set; }
+
         public bool IsRepeated(XElement element) {
             return element.ElementsAfterSelf(Name).Any();
         }

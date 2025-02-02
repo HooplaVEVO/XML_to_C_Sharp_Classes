@@ -13,6 +13,10 @@ namespace XML_to_Classes
         public static HashSet<Class> ExtractClasses(this XElement rootElement) {
             var classes = new HashSet<Class>();
             ProcessElement(rootElement, classes);
+            var rootClass = classes.FirstOrDefault<Class>(c => c.Name == rootElement.Name.LocalName);
+            if (rootClass != null) {
+                rootClass.isRoot = true;
+            }
             return classes;
         }
 
@@ -27,20 +31,22 @@ namespace XML_to_Classes
         /// Processes an XElement and adds its corresponding class to the collection.
         /// Recursively processes child elements.
         /// </summary>
-        private static Class ProcessElement(XElement element, ICollection<Class> classes) {
-            // Create the Class representation for the current XElement
+        private static Class ProcessElement(XElement element, ICollection<Class> classes, string previousName = "") {
+            // Create the Class representation for the current XElement    
+            var name = char.ToUpper(element.Name.LocalName[0]) + element.Name.LocalName.Substring(1);
             var newClass = new Class
             {
-                Name = element.Name.LocalName,
-                XmlName = element.Name.LocalName,
-                Fields = ReplaceDuplicatesWithLists(ExtractFields(element, classes)).ToList(),
-                Namespace = element.Name.NamespaceName
+                Name = previousName == "" ? element.Name.LocalName : previousName + name,
+                XmlName = name,
+                Fields = ReplaceDuplicatesWithLists(ExtractFields(element, classes, element.Name.LocalName)).ToList(),
+                Namespace = element.Name.NamespaceName,
+                isRoot = false,
             };
 
             // Ensure the class name is safe and unique
             StripInvalidCharacters(newClass);
 
-            var existingClass = classes.FirstOrDefault(c => c.XmlName == newClass.XmlName);
+            var existingClass = classes.FirstOrDefault(c => c.Name == newClass.Name);
             if (existingClass != null) {
                 // Compare fields and add any missing ones
                 foreach (var field in newClass.Fields) {
@@ -60,10 +66,10 @@ namespace XML_to_Classes
         /// <summary>
         /// Extracts fields (attributes and child elements) from the given XElement.
         /// </summary>
-        private static IEnumerable<Field> ExtractFields(XElement element, ICollection<Class> classes) {
+        private static IEnumerable<Field> ExtractFields(XElement element, ICollection<Class> classes, string previousName) {
             // Process child elements
             foreach (var childElement in element.Elements()) {
-                var childClass = ProcessElement(childElement, classes);
+                var childClass = ProcessElement(childElement, classes, previousName);
                 var type = childElement.IsEmpty() ? "string" : childClass.Name;
 
                 yield return new Field
@@ -124,6 +130,9 @@ namespace XML_to_Classes
         /// Strips invalid characters from the class name.
         /// </summary>
         private static string StripInvalidCharacters(Class newClass) {
+            if (newClass.Name == "enum"||newClass.Name == "class") {
+                return "@" + newClass.Name.Replace("-","");
+            }
             return newClass.Name.Replace("-", "");
         }
     }

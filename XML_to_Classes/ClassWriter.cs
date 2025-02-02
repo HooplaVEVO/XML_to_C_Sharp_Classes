@@ -18,9 +18,13 @@ namespace XML_to_Classes
                     //Write Headers
                     textWriter.WriteLine("[System.SerializableAttribute()]");
                     textWriter.WriteLine("[System.ComponentModel.DesignerCategoryAttribute(\"code\")]");
-                    //Will need dynamic header writing eventually
+                    // Will need dynamic header writing eventually
                     // Write class-level attributes
-                    textWriter.WriteLine("[XmlRoot(ElementName=\"{0}\", Namespace=\"{1}\")]", @class.XmlName, @class.Namespace);
+                    if (@class.isRoot) {
+                        textWriter.WriteLine("[XmlRoot(ElementName=\"{0}\", Namespace=\"{1}\",IsNullable=false)]", @class.Name, @class.Namespace);
+                    }
+                    //textWriter.WriteLine("[System.Xml.Serialization.XmlElementAttribute(\"{0}\")]", @class.XmlName);
+                    textWriter.WriteLine("[System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]");
                     textWriter.WriteLine("public partial class {0} {{", @class.Name);
                     textWriter.WriteLine();
 
@@ -33,7 +37,11 @@ namespace XML_to_Classes
                     // Write fields getters/setters
                     foreach (var field in @class.Fields) {
                         var attributeType = field.XmlType == XmlType.Element ? "Element" : "Attribute";
-                        textWriter.WriteLine("    [Xml{0}({0}Name=\"{1}\", Namespace=\"{2}\")]", attributeType, field.XmlName, field.Namespace);
+                        //Conditional checking for invalid names
+                        if(field.Name == "enum"||field.Name == "class") {
+                            field.Name = '@' + field.Name;
+                        }
+                        textWriter.WriteLine("    [Xml{0}({0}Name=\"{1}\", Namespace=\"{2}\")]", attributeType, field.Name, field.Namespace);
                         textWriter.WriteLine("    public {0} {1} {{ get; set; }}", field.Type, field.Name);
                     }
 
